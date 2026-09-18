@@ -135,9 +135,7 @@ def tokenize(query: str):
 
     while(position < len(query)):
         c = query[position]
-        c2 = None
-        if position + 1 < len(query):
-            c2 = query[position + 1]
+        c2 = query[position + 1] if position + 1 < len(query) else None
         #First ascertain what type of token is next
         #Skip whitespace
         if c == ' ':
@@ -149,47 +147,129 @@ def tokenize(query: str):
             if not token:
                 failure = True
                 break
-            tokens.append(f"String:{token}")
+            tokens.append(f"STR:{token}")
             continue
 
-        #Check if comparison/declaration operator
+        #Check if comparison operator
         if c in ["!", "=", "<", ">"]:
             if c == "!":
                 if not c2 or c2 != "=":
-                    print("Invalid not operator. ! must be followed by =")
+                    print("Invalid != operator. ! must be followed by =")
                     failure = True
                     break
-                tokens.append(f"NE:!=")
-                positions += 2
+                tokens.append("NE:!=")
+                position += 2
                 continue
             if c == "<":
                 if c2 and c2 == "=":
-                    tokens.append(f"LTE:<=")
-                    positions += 2
+                    tokens.append("LTE:<=")
+                    position += 2
                     continue
                 else:
-                    tokens.append(f"LT:<")
-                    positions += 1
+                    tokens.append("LT:<")
+                    position += 1
                     continue
             if c == ">":
                 if c2 and c2 == "=":
-                    tokens.append(f"GTE:>=")
-                    positions += 2
+                    tokens.append("GTE:>=")
+                    position += 2
                     continue
                 else:
-                    tokens.append(f"GT:>")
-                    positions += 1
+                    tokens.append("GT:>")
+                    position += 1
                     continue
             if c == "=":
-                tokens.append(f"IS:=")
-                positions += 1
+                tokens.append("IS:=")
+                position += 1
                 continue
     
-        #Check if comparison operators
+        #Check if boolean operator
+        if c in ["a", "o", "n"]:
+            if c == "a":
+                if position + 2 < len(query):
+                    if query[position:position + 3] == "and":
+                        tokens.append("AND:and")
+                        position += 3
+                        continue
+            if c == "o":
+                if c2 and c2 == "r":
+                    tokens.append("OR:or")
+                    position += 2
+                    continue
+            if c == "n":
+                if position + 2 < len(query):
+                    if query[position:position + 3] == "not":
+                        tokens.append("NOT:not")
+                        position += 3
+                        continue
 
+        brackets = {"(":"P1O:(", ")":"P1C:)", "[":"P2O:[", "]":"P2C:]", "{":"P3O:{", "}":"P3C:}"}
+        #Check if bracket
+        if c in ["(", ")", "[", "]", "{", "}"]:
+            tokens.append(brackets.get(c))
+            position += 1
+            continue
 
+        #Check if unary op/join
+        if c in ["s", "r", "p", "j"]:
+            if c == "s":
+                if position + 6 < len(query):
+                    if query[position:position + 7] == "select[":
+                        tokens.append("SELECT:select")
+                        position += 6
+                        continue
+            if c == "r":
+                if position + 6 < len(query):
+                    if query[position:position + 7] == "rename[":
+                        tokens.append("RENAME:rename")
+                        position += 6
+                        continue
+            if c == "p":
+                if position + 7 < len(query):
+                    if query[position:position + 8] == "project[":
+                        tokens.append("PROJECT:project")
+                        position += 7
+                        continue
+            if c == "j":
+                if position + 4 < len(query):
+                    if query[position:position + 5] == "join[":
+                        tokens.append("JOIN:join")
+                        position += 4
+                        continue
 
+        #Check if binary op except join
+        if c in ["t", "u", "i", "m"]:
+            if c == "t":
+                if position + 5 < len(query):
+                    if query[position - 1:position + 6] == " times ":
+                        tokens.append("TIMES:times")
+                        position += 5
+                        continue
+            if c == "u":
+                if position + 5 < len(query):
+                    if query[position - 1:position + 6] == " union ":
+                        tokens.append("UNION:union")
+                        position += 5
+                        continue
+            if c == "i":
+                if position + 9 < len(query):
+                    if query[position - 1:position + 10] == " intersect ":
+                        tokens.append("INTERSECT:intersect")
+                        position += 9
+                        continue
+            if c == "m":
+                if position + 5 < len(query):
+                    if query[position - 1:position + 6] == " minus ":
+                        tokens.append("MINUS:minus")
+                        position += 5
+                        continue
 
+        if c.isnumeric():
+            token, position = tokenize_int(query, position)
+            tokens.append(f"INT:{token}")
+            continue
+
+        
 
 def tokenize_str(query: str, position: int):
     string = ""
@@ -211,6 +291,16 @@ def tokenize_str(query: str, position: int):
         return None, -1
     return string, position + 1
 
+def tokenize_int(query: str, position: int):
+    string = ""
+    while(position < len(query)):
+        c = query[position]
+        if c.isnumeric():
+            string += c
+            position += 1
+            continue
+        break
+    return string, position
 
 def main():
     rel1 = """Employees (EID, Name, Age, DID) = {
