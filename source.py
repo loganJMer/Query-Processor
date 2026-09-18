@@ -1,4 +1,4 @@
-
+import sys
 
 
 
@@ -59,7 +59,7 @@ def join(R1: list[tuple[str]], R2: list[tuple[str]], condition: str):
 
 def union(R1: list[tuple[str]], R2: list[tuple[str]]):
     if len(R1[0]) != len(R2[0]):
-        print("Error: Relations must have same number of columns for union\n")
+        print("Schema Error: Relations must have same number of columns for union\n")
         return None
     R2_copy = R2.copy()
     union = []
@@ -75,7 +75,7 @@ def union(R1: list[tuple[str]], R2: list[tuple[str]]):
 
 def intersect(R1: list[tuple[str]], R2: list[tuple[str]]):
     if len(R1[0]) != len(R2[0]):
-        print("Error: Relations must have same number of columns for union\n")
+        print("Schema Error: Relations must have same number of columns for intersect\n")
         return None
     intersect = []
     intersect.append(R1[0])
@@ -87,7 +87,7 @@ def intersect(R1: list[tuple[str]], R2: list[tuple[str]]):
 
 def minus(R1: list[tuple[str]], R2: list[tuple[str]]):
     if len(R1[0]) != len(R2[0]):
-        print("Error: Relations must have same number of columns for union\n")
+        print("Schema Error: Relations must have same number of columns for minus\n")
         return None
     minus = []
     minus.append(R1[0])
@@ -104,7 +104,7 @@ def minus(R1: list[tuple[str]], R2: list[tuple[str]]):
 
 def rename(R1: str, name: str):
     if not relations.get(R1):
-        print(f"Relation {R1} does not exist")
+        print(f"Name Error: Relation {R1} does not exist")
         return None
     relations[name] = relations[R1]
     del relations[R1]
@@ -131,21 +131,28 @@ def print_table(R: list[tuple[str]]):
 def tokenize(query: str):
     tokens = []
     position = 0
-    failure = False
+    fail_message = ""
 
     while(position < len(query)):
         c = query[position]
         c2 = query[position + 1] if position + 1 < len(query) else None
-        #First ascertain what type of token is next
+
         #Skip whitespace
         if c == ' ':
             position += 1
             continue
+
+        #Check if comma
+        if c == ',':
+            tokens.append("COMMA:,")
+            position += 1
+            continue
+
         #Check if string
         if c == "'":
             token, position = tokenize_str(query, position + 1)
-            if not token:
-                failure = True
+            if position == -1:
+                fail_message = token
                 break
             tokens.append(f"STR:{token}")
             continue
@@ -154,10 +161,9 @@ def tokenize(query: str):
         if c in ["!", "=", "<", ">"]:
             if c == "!":
                 if not c2 or c2 != "=":
-                    print("Invalid != operator. ! must be followed by =")
-                    failure = True
+                    fail_message = "Name error: Invalid != operator. ! must be followed by ="
                     break
-                tokens.append("NE:!=")
+                tokens.append("NEQ:!=")
                 position += 2
                 continue
             if c == "<":
@@ -179,7 +185,7 @@ def tokenize(query: str):
                     position += 1
                     continue
             if c == "=":
-                tokens.append("IS:=")
+                tokens.append("EQ:=")
                 position += 1
                 continue
     
@@ -203,7 +209,7 @@ def tokenize(query: str):
                         position += 3
                         continue
 
-        brackets = {"(":"P1O:(", ")":"P1C:)", "[":"P2O:[", "]":"P2C:]", "{":"P3O:{", "}":"P3C:}"}
+        brackets = {"(":"LEFTP:(", ")":"RIGHTP:)", "[":"LEFTS:[", "]":"RIGHTS:]", "{":"LEFTC:{", "}":"RIGHTC:}"}
         #Check if bracket
         if c in ["(", ")", "[", "]", "{", "}"]:
             tokens.append(brackets.get(c))
@@ -264,15 +270,34 @@ def tokenize(query: str):
                         position += 5
                         continue
 
-        if c.isnumeric():
+
+
+        if c.isnumeric() or c == "-":
             token, position = tokenize_int(query, position)
             tokens.append(f"INT:{token}")
             continue
 
-        
+        if c.isalpha():
+            token, position = tokenize_relation(query, position)
+            if token.count(".") > 1:
+                fail_message = f"Lexical Error: Cannot have relation reference with more than one '.'. Error in relation: {token}"
+                break
+            if token.count(".") == 1:
+                tokens.append(f"RELATION_COLUMN:{token}")
+            else:
+                tokens.append(f"RELATION:{token}")
+            continue
+
+        fail_message = f"Lexical Error: Unknown formatting at character {c} in position {position}"
+        break
+    if fail_message:
+        return fail_message
+    return tokens
+
 
 def tokenize_str(query: str, position: int):
     string = ""
+    orig_pos = position - 1
     finished = False
     while(position < len(query)):
         c = query[position]
@@ -287,22 +312,35 @@ def tokenize_str(query: str, position: int):
         finished = True
         break
     if not finished:
-        print(f"String {string} was never closed")
-        return None, -1
+        fail_message = f"Lexical Error: String '{string} was never closed. Starts at position {orig_pos}"
+        return fail_message, -1
     return string, position + 1
 
 def tokenize_int(query: str, position: int):
     string = ""
     while(position < len(query)):
         c = query[position]
-        if c.isnumeric():
+        if c.isnumeric() or (c == "-" and string == ""):
             string += c
             position += 1
             continue
         break
     return string, position
 
+def tokenize_relation(query: str, position: int):
+    relation = ""
+    while(position < len(query)):
+        c = query[position]
+        if c.isalnum() or c in ["_", "."]:
+            relation += c
+            position += 1
+            continue
+        break
+    return relation, position
+
 def main():
+
+
     rel1 = """Employees (EID, Name, Age, DID) = {
     E1, John, 32, D1
     E2, Alice, 28, D2
@@ -324,16 +362,16 @@ def main():
     create_relation(rel1)
     create_relation(rel2)
     create_relation(rel3)
-    print_table(relations["Employees"])
-    print_table(relations["Departments"])
-    print_table(relations["Employees2"])
-    print_table(project(relations["Departments"], ["DID"]))
-    print_table(project(relations["Employees"], ["EID", "Age"]))
-    print_table(times(relations["Employees"], relations["Departments"]))
-    print_table(union(relations["Employees"], relations["Employees2"]))
-    print_table(intersect(relations["Employees"], relations["Employees2"]))
-    print_table(minus(relations["Employees"], relations["Employees2"]))
-    print_table(minus(relations["Employees2"], relations["Employees"]))
+    # print_table(relations["Employees"])
+    # print_table(relations["Departments"])
+    # print_table(relations["Employees2"])
+    # print_table(project(relations["Departments"], ["DID"]))
+    # print_table(project(relations["Employees"], ["EID", "Age"]))
+    # print_table(times(relations["Employees"], relations["Departments"]))
+    # print_table(union(relations["Employees"], relations["Employees2"]))
+    # print_table(intersect(relations["Employees"], relations["Employees2"]))
+    # print_table(minus(relations["Employees"], relations["Employees2"]))
+    # print_table(minus(relations["Employees2"], relations["Employees"]))
 
 
 if __name__ == "__main__":
