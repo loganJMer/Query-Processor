@@ -126,6 +126,92 @@ def print_table(R: list[tuple[str]]):
     print("\n")
 
 
+
+
+def tokenize(query: str):
+    tokens = []
+    position = 0
+    failure = False
+
+    while(position < len(query)):
+        c = query[position]
+        c2 = None
+        if position + 1 < len(query):
+            c2 = query[position + 1]
+        #First ascertain what type of token is next
+        #Skip whitespace
+        if c == ' ':
+            position += 1
+            continue
+        #Check if string
+        if c == "'":
+            token, position = tokenize_str(query, position + 1)
+            if not token:
+                failure = True
+                break
+            tokens.append(f"String:{token}")
+            continue
+
+        #Check if comparison/declaration operator
+        if c in ["!", "=", "<", ">"]:
+            if c == "!":
+                if not c2 or c2 != "=":
+                    print("Invalid not operator. ! must be followed by =")
+                    failure = True
+                    break
+                tokens.append(f"NE:!=")
+                positions += 2
+                continue
+            if c == "<":
+                if c2 and c2 == "=":
+                    tokens.append(f"LTE:<=")
+                    positions += 2
+                    continue
+                else:
+                    tokens.append(f"LT:<")
+                    positions += 1
+                    continue
+            if c == ">":
+                if c2 and c2 == "=":
+                    tokens.append(f"GTE:>=")
+                    positions += 2
+                    continue
+                else:
+                    tokens.append(f"GT:>")
+                    positions += 1
+                    continue
+            if c == "=":
+                tokens.append(f"IS:=")
+                positions += 1
+                continue
+    
+        #Check if comparison operators
+
+
+
+
+
+def tokenize_str(query: str, position: int):
+    string = ""
+    finished = False
+    while(position < len(query)):
+        c = query[position]
+        if c != "'":
+            string += c
+            position += 1
+            continue
+        if position + 1 != len(query) and query[position + 1] == "'":
+            string += c
+            position += 2
+            continue
+        finished = True
+        break
+    if not finished:
+        print(f"String {string} was never closed")
+        return None, -1
+    return string, position + 1
+
+
 def main():
     rel1 = """Employees (EID, Name, Age, DID) = {
     E1, John, 32, D1
