@@ -137,7 +137,7 @@ reqTests = [
     # 9
     [
         "select[Name='Bob](R)",
-        "String 'Bob](R) was never closed. Starts at position 12"
+        "Lexical Error: String 'Bob](R) was never closed. Starts at position 12"
     ],
 
 
