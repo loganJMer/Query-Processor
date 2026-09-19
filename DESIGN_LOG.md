@@ -7,8 +7,8 @@ Finished tokenizer, adding functionality for all possibilities as for all that I
 Planning to begin work on grammar
 
 
-Session 3: 2pm - 
-Worked on
+Session 3: 2pm - 3:30pm
+Read some info on EBNF to start. Then began working on my grammar document. First did the definitions of relations and strings to get a hang of the formatting without having to worry about expression order and stuff. Then, I began working on the actually expression grammar. It was tough to figure out how to both solve the left-recursion issue as well as how to add associativity and precedence. However, upon asking AI, although it gave me incorrect grammar and I described below, it did introduce me to the concept of working backwards. I did the comparison operators first, starting with or which is lowest precedence and then moving towards not. I then did the same thing for binary/unary expressions, starting with the lower binary operations, then doing join, followed by unary. After working out some typo or oversight kinks with review and AI, I managed to get the grammar to a state I liked. I then quickly answered the questions 5.2, 5.3, and 5.4. Grammar may have to be tweaked after beginnig to actually write the parser but looking good for now.
 
 
 **AI issue**: When trying to use AI to help confirm if there were issues with my grammar declarations for section 5.1, it continually tried to make me changed my definitions so that the base definition of an expr was exclusively a binary operator, essentially making it so every query would have to have at least one binary operator
