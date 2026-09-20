@@ -48,9 +48,7 @@ project-expr ::=
 rename-expr ::=
     "rename" , "[" , identifier , "]" , "(" , expr , ")" ;
 
-condition ::= or-condition ;
-
-or-condition ::= and-condition , { "or" , and-condition } ;
+condition ::= and-condition , { "or" , and-condition } ;
 
 and-condition ::= not-condition , { "and" , not-condition} ;
 

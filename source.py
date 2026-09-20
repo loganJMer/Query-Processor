@@ -1,15 +1,6 @@
 import sys
 
-
-
-
-
 relations = {}
-
-
-
-
-
 
 def create_relation(input: str):
     relation_name = input[:input.find(" ")]
@@ -23,9 +14,82 @@ def create_relation(input: str):
             relation.append(tuple(split_row))
     relations[relation_name] = relation
 
+def evaluate_condition(condition, col_names: tuple[str], row: tuple[str]):
+    if not (condition):
+        print("Syntax error: Select requires non empty condition.")
+        return None
+    match condition[0]:
+        case "OR":
+            return evaluate_condition(condition[1], col_names, row) or evaluate_condition(condition[2], col_names, row)
+        case "AND":
+            return evaluate_condition(condition[1], col_names, row) and evaluate_condition(condition[2], col_names, row)
+        case "NOT":
+            return not evaluate_condition(condition[1], col_names, row)
+        case "COMPARISON":
+            comparison = condition[1]
+            operator = comparison[0]
+            val1 = comparison[1]
+            val2 = comparison[2]
+            vals = []
+            for val in [val1, val2]:
+                if val[0] == "ATTRIBUTE":
+                    if val[1] not in col_names:
+                        print(f"Syntax error: Attribute {val[1]} not present in relation attributes {col_names}")
+                        return None
+                    index = col_names.index(val[1])
+                    row_value = row[index]
+                    if is_number(row_value):
+                        row_value = float(row_value)
+                    vals.append(row_value)
+                elif val[0] == "INT":
+                    vals.append(float(val[1]))
+                else:
+                    vals.append(val[1])
+            compatible = check_compatability(vals, operator)
+            if not compatible:
+                return None
+            match operator:
+                case "EQ":
+                    return vals[0] == vals[1]
+                case "NEQ":
+                    return vals[0] != vals[1]
+                case "GT":
+                    return vals[0] > vals[1]
+                case "GTE":
+                    return vals[0] >= vals[1]
+                case "LT":
+                    return vals[0] < vals[1]
+                case "LTE":
+                    return vals[0] <= vals[1]
+            print(f"Unknown operator type {operator}")
+            return None
 
-def select(R: list[tuple[str]], condition: str):
-    pass
+def check_compatability(vals, operator):
+    nums = [False, False]
+    if isinstance(vals[0], float):
+        nums[0] = True
+    if isinstance(vals[1], float):
+        nums[1] = True
+    #Don't need to be same type for these. MAYBE NEED TO CHANGE
+    if operator in ["EQ", "NEQ"] or nums[0] == nums[1]:
+        return True
+    print(f"Syntax error: Cannot compare string to int with operator {operator}. Val1: {vals[0]}  Val2: {vals[1]}")
+    return False
+
+def is_number(n):
+  try:
+    float(n)
+    return True
+  except ValueError:
+    return False
+
+def select(R: list[tuple[str]], condition: list[str]):
+    selection = [R[0], R[1]]
+    parsed_condition = parse_condition(condition)
+    for row in R[2:]:
+        if evaluate_condition(parsed_condition, R[1], row):
+            selection.append(row)
+    return selection
 
 def project(R: list[tuple[str]], cols: list[str]):
     indices = []
@@ -48,7 +112,7 @@ def project(R: list[tuple[str]], cols: list[str]):
 
 #Cartesian product
 def times(R1: list[tuple[str]], R2: list[tuple[str]]):
-    product = [f"{R1[0]}X{R2[0]}"]
+    product = [R1[0]]
     titles = []
     for col in R1[1]:
         titles.append(f"{R1[0]}.{col}")
@@ -64,14 +128,14 @@ def times(R1: list[tuple[str]], R2: list[tuple[str]]):
 
 #Theta inner join
 def join(R1: list[tuple[str]], R2: list[tuple[str]], condition: str):
-    pass
+    return select(times(R1, R2), condition)
 
 def union(R1: list[tuple[str]], R2: list[tuple[str]]):
     if len(R1[1]) != len(R2[1]):
         print("Schema Error: Relations must have same number of columns for union\n")
         return None
     R2_copy = R2.copy()
-    union = [f"{R1[0]}U{R2[0]}"]
+    union = [R1[0]]
     union.append(R1[1])
     for row1 in R1[2:]:
         union.append(row1)
@@ -86,7 +150,7 @@ def intersect(R1: list[tuple[str]], R2: list[tuple[str]]):
     if len(R1[1]) != len(R2[1]):
         print("Schema Error: Relations must have same number of columns for intersect\n")
         return None
-    intersect = [f"{R1[0]}I{R2[0]}"]
+    intersect = [R1[0]]
     intersect.append(R1[1])
     for row1 in R1[2:]:
         for row2 in R2[2:]:
@@ -98,7 +162,7 @@ def minus(R1: list[tuple[str]], R2: list[tuple[str]]):
     if len(R1[1]) != len(R2[1]):
         print("Schema Error: Relations must have same number of columns for minus\n")
         return None
-    minus = [f"{R1[0]}M{R2[0]}"]
+    minus = [R1[0]]
     minus.append(R1[1])
     for row1 in R1[2:]:
         skip = False
@@ -347,40 +411,303 @@ def tokenize_relation(query: str, position: int):
         break
     return relation, position
 
+def parse_expr(tokens: list[str]):
+    leftJoinExpr, num_consumed = parse_join_expr(tokens)
+    if not leftJoinExpr:
+        return None
+    total_num_consumed = num_consumed
+    if num_consumed == len(tokens):
+        return leftJoinExpr, total_num_consumed
+    tokens = tokens[num_consumed:]
+    while tokens[0] in ["UNION:union", "INTERSECT:intersect", "MINUS:minus", "TIMES:times"]:
+        operator = tokens[0]
+        if len(tokens) == 1:
+            print(f"Syntax error: binary operator {operator} must be followed by a join-expr, cannot be empty.")
+            return None
+        rightJoinExpr, num_consumed = parse_join_expr(tokens[1:])
+        if not rightJoinExpr:
+            return None
+        total_num_consumed += num_consumed + 1
+        match operator:
+            case "UNION:union":
+                expr = ("UNION", leftJoinExpr, rightJoinExpr)
+            case "INTERSECT:intersect":
+                expr = ("INTERSECT", leftJoinExpr, rightJoinExpr)
+            case "MINUS:minus":
+                expr = ("MINUS", leftJoinExpr, rightJoinExpr)
+            case "TIMES:times":
+                expr = ("TIMES", leftJoinExpr, rightJoinExpr)
+        if num_consumed == len(tokens[1:]):
+            return expr, total_num_consumed
+        tokens = tokens[num_consumed + 1:]
+        leftJoinExpr = expr
+    return leftJoinExpr, total_num_consumed
+
+
+def parse_join_expr(tokens: list[str]):
+    leftPrimaryExpr, num_consumed = parse_primary_expr(tokens)
+    if not leftPrimaryExpr:
+        return None
+    total_num_consumed = num_consumed
+    if num_consumed == len(tokens):
+        return leftPrimaryExpr, total_num_consumed
+    tokens = tokens[num_consumed:]
+    while tokens[0] == "JOIN:join":
+        if "LEFTS:[" not in tokens or tokens[1] != "LEFTS:[":
+            print("Syntax error: join operator must be followed by [.")
+            return None
+        if "RIGHTS:]" not in tokens:
+            print("Syntax error: Condition for join statement must be closed with ].")
+            return None
+        lConIndex = tokens.index("LEFTS:[")
+        rConIndex = tokens.index("RIGHTS:]")
+        if rConIndex == 2:
+            print("Syntax error: join condition cannot be empty")
+            return None
+        if rConIndex == len(tokens) - 1:
+            print("Syntax error: Must have primary expression after join condition")
+            return None
+        
+        condition_tokens = tokens[lConIndex + 1:rConIndex]
+        condition, condition_num_consumed = parse_condition(condition_tokens)
+        if not condition:
+            return None
+        if condition_num_consumed != len(condition_tokens):
+            print("Syntax error: Join condition consumption did not match expected value.")
+            return None
+        rightPrimaryExpr, right_num_consumed = parse_primary_expr(tokens[rConIndex + 1:])
+        if not rightPrimaryExpr:
+            return None
+        total_num_consumed += condition_num_consumed + right_num_consumed + 3 # +3 is for join, [ and ]
+        expr = ("JOIN", leftPrimaryExpr, rightPrimaryExpr, condition)
+        if right_num_consumed == len(tokens[rConIndex + 1:]):
+            return expr, total_num_consumed
+        tokens = tokens[rConIndex + 1:]
+        leftPrimaryExpr = expr
+    return leftPrimaryExpr, total_num_consumed
+
+def parse_primary_expr(tokens: list[str]):
+    pass
+
+
+def parse_condition(tokens: list[str]):
+    leftAndCondition, num_consumed = parse_and_condition(tokens)
+    if not leftAndCondition:
+        return None
+    total_num_consumed = num_consumed
+    if num_consumed == len(tokens):
+        return leftAndCondition, total_num_consumed
+    tokens = tokens[num_consumed:]
+    while tokens[0] == "OR:or":
+        if len(tokens) == 1:
+            print(f"Syntax error: or operator must be followed by comparison or nested condition")
+            return None
+        rightAndCondition, num_consumed = parse_and_condition(tokens[1:])
+        if not rightAndCondition:
+            return None
+        total_num_consumed += num_consumed + 1
+        condition = ("OR", leftAndCondition, rightAndCondition)
+        if num_consumed == len(tokens[1:]):
+            return condition, total_num_consumed
+        tokens = tokens[num_consumed + 1:]
+        leftAndCondition = condition
+    return leftAndCondition, total_num_consumed
+
+
+
+def parse_and_condition(tokens: list[str]):
+    leftNotCondition, num_consumed = parse_not_condition(tokens)
+    if not leftNotCondition:
+        return None
+    total_num_consumed = num_consumed
+    if num_consumed == len(tokens):
+        return leftNotCondition, total_num_consumed
+    tokens = tokens[num_consumed:]
+    while tokens[0] == "AND:and":
+        if len(tokens) == 1:
+            print(f"Syntax error: and operator must be followed by comparison or nested condition")
+            return None
+        rightNotCondition, num_consumed = parse_not_condition(tokens[1:])
+        if not rightNotCondition:
+            return None
+        total_num_consumed += num_consumed + 1
+        condition = ("AND", leftNotCondition, rightNotCondition)
+        if num_consumed == len(tokens[1:]):
+            return condition, total_num_consumed
+        tokens = tokens[num_consumed + 1:]
+        leftNotCondition = condition
+    return leftNotCondition, total_num_consumed
+
+def parse_not_condition(tokens: list[str]):
+
+    if len(tokens) == 0:
+        print("Syntax error: expected not-condition, but received no tokens")
+        return None
+
+    if tokens[0] == "NOT:not":
+
+        if len(tokens) == 1:
+            print("Syntax error: not operator must be followed by a condition")
+            return None
+
+        condition, num_consumed = parse_not_condition(tokens[1:])
+
+        if not condition:
+            return None
+
+        return ("NOT", condition), num_consumed + 1
+
+    return parse_condition_base(tokens)
+
+def parse_condition_base(tokens: list[str]):
+
+    if len(tokens) == 0:
+        print("Syntax error: expected condition")
+        return None
+
+    if tokens[0] == "LEFTP:(":
+        condition, num_consumed = parse_condition(tokens[1:])
+        if not condition:
+            return None
+        if num_consumed == len(tokens[1:]) or tokens[num_consumed + 1] != "RIGHTP:)":
+            print(f"Syntax error: Never closed ( for nested condition {tokens[1:]}")
+            return None
+        
+        return condition, num_consumed + 2
+    return parse_comparison(tokens)
+
+def parse_comparison(tokens: list[str]):
+    if len(tokens) < 3:
+        print(f"Syntax error: comparison must consist of three elements: {tokens}")
+        return None
+    leftOp = parse_operand(tokens[0])
+    rightOp = parse_operand(tokens[2])
+    compOp = parse_comparison_operator(tokens[1])
+    if not (leftOp and rightOp and compOp):
+        return None
+    return ("COMPARISON", (compOp, leftOp, rightOp)), 3
+
+def parse_operand(token: str):
+    if not token:
+        print(f"Syntax error: operand must consist of one element: {token}")
+        return None
+    operand = token
+    if operand.startswith("RELATION:") or operand.startswith("RELATION_COLUMN:"):
+        return ("ATTRIBUTE", operand[operand.index(":")+1:])
+    if operand.startswith("INT:"):
+        return ("INT", int(operand[operand.index(":")+1:]))
+    if operand.startswith("STR:"):
+        return ("STR", operand[operand.index(":")+1:])
+    print(f"Operand must be of type RELATION, RELATION_COLUMN, INT, or STR: {operand}")
+    return None
+
+def parse_comparison_operator(token: str):
+    if not token:
+        print(f"Syntax error: comparison operator must consist of one element: {token}")
+        return None
+    compOp = token
+    if compOp in ["EQ:=", "NEQ:!=", "GT:>", "GTE:>=", "LT:<", "LTE:<="]:
+        return compOp[:compOp.index(":")]
+    print(f"Comparison operator must be of type EQ, NE, GT, GTE, LT, LTE: {compOp}")
+    return None
+
 def main():
 
 
-    rel1 = """Employees (EID, Name, Age, DID) = {
-    E1, John, 32, D1
-    E2, Alice, 28, D2
-    E3, Bob, 29, D3
-    E4, Janice, 30, D2
+    # rel1 = """Employees (EID, Name, Age, DID) = {
+    # E1, John, 32, D1
+    # E2, Alice, 28, D2
+    # E3, Bob, 29, D3
+    # E4, Janice, 30, D2
+    # }"""
+    # rel2 = """Departments (DID, Name, Budget) = {
+    # D1, Finance, 20000
+    # D2, Sales, 30000
+    # D3, HR, 25000
+    # D4, IT, 15000
+    # }"""
+    # rel3 = """Employees2 (EID, Name, Age, DID) = {
+    # E2, Alice, 28, D2
+    # E4, Janice, 30, D2
+    # E5, John, 32, D1
+    # E6, David, 47, D4
+    # }"""
+    # create_relation(rel1)
+    # create_relation(rel2)
+    # create_relation(rel3)
+    # print_table(relations["Employees"])
+    # print_table(relations["Departments"])
+    # print_table(relations["Employees2"])
+    # print_table(project(relations["Departments"], ["DID"]))
+    # print_table(project(relations["Employees"], ["EID", "Age"]))
+    # print_table(times(relations["Employees"], relations["Departments"]))
+    # print_table(union(relations["Employees"], relations["Employees2"]))
+    # print_table(intersect(relations["Employees"], relations["Employees2"]))
+    # print_table(minus(relations["Employees"], relations["Employees2"]))
+    # print_table(minus(relations["Employees2"], relations["Employees"]))
+    rel1 = """A (X) = {
+    1
+    2
+    3
     }"""
-    rel2 = """Departments (DID, Name, Budget) = {
-    D1, Finance, 20000
-    D2, Sales, 30000
-    D3, HR, 25000
-    D4, IT, 15000
+
+    rel2 = """B (X) = {
+    2
+    3
+    4
     }"""
-    rel3 = """Employees2 (EID, Name, Age, DID) = {
-    E2, Alice, 28, D2
-    E4, Janice, 30, D2
-    E5, John, 32, D1
-    E6, David, 47, D4
+
+    rel3 = """C (X) = {
+    3
+    4
+    5
     }"""
+
+    rel4 = """D (Y) = {
+    10
+    20
+    }"""
+
     create_relation(rel1)
     create_relation(rel2)
     create_relation(rel3)
-    print_table(relations["Employees"])
-    print_table(relations["Departments"])
-    print_table(relations["Employees2"])
-    print_table(project(relations["Departments"], ["DID"]))
-    print_table(project(relations["Employees"], ["EID", "Age"]))
-    print_table(times(relations["Employees"], relations["Departments"]))
-    print_table(union(relations["Employees"], relations["Employees2"]))
-    print_table(intersect(relations["Employees"], relations["Employees2"]))
-    print_table(minus(relations["Employees"], relations["Employees2"]))
-    print_table(minus(relations["Employees2"], relations["Employees"]))
+    create_relation(rel4)
+
+    print("Testing: A")
+    query, num = parse_expr(tokenize("A"))
+    print_table(query)
+
+    print("Testing: A union B")
+    query, num = parse_expr(tokenize("A union B"))
+    print_table(query)
+
+    print("Testing: A intersect B")
+    query, num = parse_expr(tokenize("A intersect B"))
+    print_table(query)
+
+    print("Testing: A minus B")
+    query, num = parse_expr(tokenize("A minus B"))
+    print_table(query)
+
+    print("Testing: A times D")
+    query, num = parse_expr(tokenize("A times D"))
+    print_table(query)
+
+    print("Testing: A union B minus C")
+    query, num = parse_expr(tokenize("A union B minus C"))
+    print_table(query)
+
+    print("Testing: A minus B minus C")
+    query, num = parse_expr(tokenize("A minus B minus C"))
+    print_table(query)
+
+    print("Testing: A union B intersect C")
+    query, num = parse_expr(tokenize("A union B intersect C"))
+    print_table(query)
+
+    print("Testing: A times D union B")
+    query, num = parse_expr(tokenize("A times D union B"))
+    print_table(query)
 
 
 if __name__ == "__main__":
