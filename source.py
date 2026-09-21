@@ -70,8 +70,7 @@ def check_compatability(vals, operator):
         nums[0] = True
     if isinstance(vals[1], float):
         nums[1] = True
-    #Don't need to be same type for these. MAYBE NEED TO CHANGE
-    if operator in ["EQ", "NEQ"] or nums[0] == nums[1]:
+    if nums[0] == nums[1]:
         return True
     print(f"Syntax error: Cannot compare string to int with operator {operator}. Val1: {vals[0]}  Val2: {vals[1]}")
     return False
