@@ -4,14 +4,26 @@ relations = {}
 
 def create_relation(input: str):
     relation_name = input[:input.find(" ")]
+    if relation_name in relations:
+        print(f"Error: Relation {relation_name} already exists")
+        return
     col_names = input[input.find("(") + 1:input.find(")")].split(", ")
+    if len(col_names) != len(set(col_names)):
+        print("Error: Duplicate column names")
+        return
     relation = [relation_name, tuple(col_names)]
     info = input[input.find("{") + 1:input.find("}") - 1].split("\n")
     for row in info:
         row = row.strip()
         if row:
             split_row = row.split(", ")
-            relation.append(tuple(split_row))
+            if len(split_row) != len(col_names):
+                print(f"Lexical error: All rows in relation must be of equal length. Error: {row}")
+                return
+            if tuple(split_row) not in relation[2:]:
+                relation.append(tuple(split_row))
+            else:
+                print(f"Ignoring duplicate row: {row}")
     relations[relation_name] = relation
 
 def evaluate_condition(condition, col_names: tuple[str], row: tuple[str]):
@@ -41,7 +53,7 @@ def evaluate_condition(condition, col_names: tuple[str], row: tuple[str]):
                     if is_number(row_value):
                         row_value = float(row_value)
                     vals.append(row_value)
-                elif val[0] == "INT":
+                elif val[0] == "NUM":
                     vals.append(float(val[1]))
                 else:
                     vals.append(val[1])
@@ -99,6 +111,7 @@ def project(R: list[tuple[str]], cols: list[str]):
         index = R[1].index(col)
         if index in indices:
             print(f"Syntax error: No duplicates attributes in project. Error in project{cols}({R[0]})")
+            return None
         indices.append(index)
         if indices[-1] == -1:
             print(f"Name error: Column {col} does not exist in relation {R}")
@@ -403,7 +416,13 @@ def tokenize(query: str):
 
         if c.isnumeric() or c == "-":
             token, position = tokenize_int(query, position)
-            tokens.append(f"INT:{token}")
+            if token.count(".") > 1:
+                fail_message = "Lexical Error: Cannot have number with more than one decimal point"
+                break
+            if token[0] == "." or token[-1] == ".":
+                fail_message = "Lexical Error: Number cannot start or end with decimal point"
+                break
+            tokens.append(f"NUM:{token}")
             continue
 
         if c.isalpha():
@@ -446,7 +465,7 @@ def tokenize_int(query: str, position: int):
     string = ""
     while(position < len(query)):
         c = query[position]
-        if c.isnumeric() or (c == "-" and string == ""):
+        if c.isnumeric() or c == "." or (c == "-" and string == ""):
             string += c
             position += 1
             continue
@@ -465,7 +484,6 @@ def tokenize_relation(query: str, position: int):
     return relation, position
 
 def parse_expr(tokens: list[str]):
-    print(tokens)
     result = parse_join_expr(tokens)
     if not result:
         return None
@@ -748,7 +766,7 @@ def parse_condition_base(tokens: list[str]):
     return parse_comparison(tokens)
 
 def parse_comparison(tokens: list[str]):
-    if len(tokens) < 3:
+    if len(tokens) != 3:
         print(f"Syntax error: comparison must consist of three elements: {tokens}")
         return None
     leftOp = parse_operand(tokens[0])
@@ -765,11 +783,11 @@ def parse_operand(token: str):
     operand = token
     if operand.startswith("RELATION:"):
         return ("ATTRIBUTE", operand[operand.index(":")+1:])
-    if operand.startswith("INT:"):
-        return ("INT", int(operand[operand.index(":")+1:]))
+    if operand.startswith("NUM:"):
+        return ("NUM", float(operand[operand.index(":")+1:]))
     if operand.startswith("STR:"):
         return ("STR", operand[operand.index(":")+1:])
-    print(f"Operand must be of type RELATION, INT, or STR: {operand}")
+    print(f"Operand must be of type RELATION, NUM, or STR: {operand}")
     return None
 
 def parse_comparison_operator(token: str):
