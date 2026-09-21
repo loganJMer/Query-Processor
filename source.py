@@ -85,9 +85,11 @@ def is_number(n):
 
 def select(R: list[tuple[str]], condition: list[str]):
     selection = [R[0], R[1]]
-    parsed_condition = parse_condition(condition)
     for row in R[2:]:
-        if evaluate_condition(parsed_condition, R[1], row):
+        evaluation = evaluate_condition(condition, R[1], row)
+        if evaluation is None:
+            return None
+        if evaluation:
             selection.append(row)
     return selection
 
@@ -131,8 +133,11 @@ def join(R1: list[tuple[str]], R2: list[tuple[str]], condition: str):
     return select(times(R1, R2), condition)
 
 def union(R1: list[tuple[str]], R2: list[tuple[str]]):
-    if len(R1[1]) != len(R2[1]):
-        print("Schema Error: Relations must have same number of columns for union\n")
+    if R1[1] != R2[1]:
+        print(
+            f"Syntax error: Cannot union relations with different schemas: "
+            f"{R1[1]} and {R2[1]}"
+        )
         return None
     R2_copy = R2.copy()
     union = [R1[0]]
@@ -147,8 +152,11 @@ def union(R1: list[tuple[str]], R2: list[tuple[str]]):
     return union
 
 def intersect(R1: list[tuple[str]], R2: list[tuple[str]]):
-    if len(R1[1]) != len(R2[1]):
-        print("Schema Error: Relations must have same number of columns for intersect\n")
+    if R1[1] != R2[1]:
+        print(
+            f"Syntax error: Cannot intersect relations with different schemas: "
+            f"{R1[1]} and {R2[1]}"
+        )
         return None
     intersect = [R1[0]]
     intersect.append(R1[1])
@@ -159,8 +167,11 @@ def intersect(R1: list[tuple[str]], R2: list[tuple[str]]):
     return intersect
 
 def minus(R1: list[tuple[str]], R2: list[tuple[str]]):
-    if len(R1[1]) != len(R2[1]):
-        print("Schema Error: Relations must have same number of columns for minus\n")
+    if R1[1] != R2[1]:
+        print(
+            f"Syntax error: Cannot minus relations with different schemas: "
+            f"{R1[1]} and {R2[1]}"
+        )
         return None
     minus = [R1[0]]
     minus.append(R1[1])
@@ -175,11 +186,11 @@ def minus(R1: list[tuple[str]], R2: list[tuple[str]]):
         minus.append(row1)
     return minus
 
-def rename(R1: str, name: str):
-    if not relations.get(R1):
-        print(f"Name Error: Relation {R1} does not exist")
-        return None
-    relations[name] = relations[R1]
+def rename(R1: list[tuple[str]], name: str):
+    new_relation = R1.copy()
+    new_relation[0] = name
+    relations[name] = new_relation
+    return relations[name]
 
 def print_table(R: list[tuple[str]]):
     print(R[0] + "\n")
@@ -451,9 +462,10 @@ def tokenize_relation(query: str, position: int):
     return relation, position
 
 def parse_expr(tokens: list[str]):
-    leftJoinExpr, num_consumed = parse_join_expr(tokens)
-    if not leftJoinExpr:
+    result = parse_join_expr(tokens)
+    if not result:
         return None
+    leftJoinExpr, num_consumed = result
     total_num_consumed = num_consumed
     if num_consumed == len(tokens):
         return leftJoinExpr, total_num_consumed
@@ -463,9 +475,10 @@ def parse_expr(tokens: list[str]):
         if len(tokens) == 1:
             print(f"Syntax error: binary operator {operator} must be followed by a join-expr, cannot be empty.")
             return None
-        rightJoinExpr, num_consumed = parse_join_expr(tokens[1:])
-        if not rightJoinExpr:
+        result = parse_join_expr(tokens[1:])
+        if not result:
             return None
+        rightJoinExpr, num_consumed = result
         total_num_consumed += num_consumed + 1
         match operator:
             case "UNION:union":
@@ -484,9 +497,10 @@ def parse_expr(tokens: list[str]):
 
 
 def parse_join_expr(tokens: list[str]):
-    leftPrimaryExpr, num_consumed = parse_primary_expr(tokens)
-    if not leftPrimaryExpr:
+    result = parse_primary_expr(tokens)
+    if not result:
         return None
+    leftPrimaryExpr, num_consumed = result
     total_num_consumed = num_consumed
     if num_consumed == len(tokens):
         return leftPrimaryExpr, total_num_consumed
@@ -508,20 +522,22 @@ def parse_join_expr(tokens: list[str]):
             return None
         
         condition_tokens = tokens[lConIndex + 1:rConIndex]
-        condition, condition_num_consumed = parse_condition(condition_tokens)
-        if not condition:
+        result = parse_condition(condition_tokens)
+        if not result:
             return None
+        condition, condition_num_consumed = result
         if condition_num_consumed != len(condition_tokens):
             print("Syntax error: Join condition consumption did not match expected value.")
             return None
-        rightPrimaryExpr, right_num_consumed = parse_primary_expr(tokens[rConIndex + 1:])
-        if not rightPrimaryExpr:
+        result = parse_primary_expr(tokens[rConIndex + 1:])
+        if not result:
             return None
+        rightPrimaryExpr, right_num_consumed = result
         total_num_consumed += condition_num_consumed + right_num_consumed + 3 # +3 is for join, [ and ]
         expr = ("JOIN", leftPrimaryExpr, rightPrimaryExpr, condition)
         if right_num_consumed == len(tokens[rConIndex + 1:]):
             return expr, total_num_consumed
-        tokens = tokens[rConIndex + 1:]
+        tokens = tokens[rConIndex + 1 + right_num_consumed:]
         leftPrimaryExpr = expr
     return leftPrimaryExpr, total_num_consumed
 
@@ -531,9 +547,10 @@ def parse_primary_expr(tokens: list[str]):
         return None
 
     if tokens[0] == "LEFTP:(":
-        expr, num_consumed = parse_expr(tokens[1:])
-        if not expr:
+        result = parse_expr(tokens[1:])
+        if not result:
             return None
+        expr, num_consumed = result
         if num_consumed == len(tokens[1:]) or tokens[num_consumed + 1] != "RIGHTP:)":
             print(f"Syntax error: Never closed ( for nested expression {tokens[1:]}")
             return None
@@ -557,22 +574,24 @@ def parse_primary_expr(tokens: list[str]):
         condition_tokens = tokens[lConIndex + 1:rConIndex]
         match tokens[0]:
             case "SELECT:select":
-                condition, condition_num_consumed = parse_condition(condition_tokens)
+                result = parse_condition(condition_tokens)
             case "PROJECT:project":
-                condition, condition_num_consumed = parse_attribute_list(condition_tokens)
+                result = parse_attribute_list(condition_tokens)
             case "RENAME:rename":
-                condition, condition_num_consumed = parse_new_name(condition_tokens) 
-        if not condition:
+                result = parse_new_name(condition_tokens) 
+        if not result:
             return None
+        condition, condition_num_consumed = result
         if condition_num_consumed != len(condition_tokens):
             print("Syntax error: Unary condition consumption did not match expected value.")
             return None 
         if "LEFTP:(" not in tokens or tokens[rConIndex + 1] != "LEFTP:(":
             print(f"Syntax error: Require nested ( expression ) after condition for unary expression {tokens[0]}")
             return None
-        base_expr, num_consumed = parse_expr(tokens[rConIndex + 2:])
-        if not base_expr:
+        result = parse_expr(tokens[rConIndex + 2:])
+        if not result:
             return None
+        base_expr, num_consumed = result
         if num_consumed == len(tokens[rConIndex + 2:]) or tokens[rConIndex + num_consumed + 2] != "RIGHTP:)":
             print(f"Syntax error: Never closed ( for nested expression {tokens[rConIndex+1:]}")
             return None
@@ -612,7 +631,7 @@ def parse_attribute_list(tokens: list[str]):
                 print("Each element in attribute list must be seperated by comma")
                 return None
         
-    return ("ATTRIBUTE_LIST", names)
+    return ("ATTRIBUTE_LIST", names), len(tokens)
 
 def parse_new_name(tokens: list[str]):
     if not tokens:
@@ -625,17 +644,18 @@ def parse_new_name(tokens: list[str]):
     if not new_name.startswith("RELATION:"):
         print("New name arg for rename must of type RELATION")
         return None
-    new_name = new_name[4:]
+    new_name = new_name[9:]
     if not new_name or not new_name[0].isalpha() or not all(c.isalnum() or c == "_" for c in new_name):
         print("Relation name must being with alpha character and contain only alphanumeric characters or '_'")
         return None
 
-    return ("STR", new_name)
+    return ("STR", new_name), 1
 
 def parse_condition(tokens: list[str]):
-    leftAndCondition, num_consumed = parse_and_condition(tokens)
-    if not leftAndCondition:
+    result = parse_and_condition(tokens)
+    if not result:
         return None
+    leftAndCondition, num_consumed = result
     total_num_consumed = num_consumed
     if num_consumed == len(tokens):
         return leftAndCondition, total_num_consumed
@@ -644,9 +664,10 @@ def parse_condition(tokens: list[str]):
         if len(tokens) == 1:
             print(f"Syntax error: or operator must be followed by comparison or nested condition")
             return None
-        rightAndCondition, num_consumed = parse_and_condition(tokens[1:])
-        if not rightAndCondition:
+        result = parse_and_condition(tokens[1:])
+        if not result:
             return None
+        rightAndCondition, num_consumed = result
         total_num_consumed += num_consumed + 1
         condition = ("OR", leftAndCondition, rightAndCondition)
         if num_consumed == len(tokens[1:]):
@@ -658,9 +679,10 @@ def parse_condition(tokens: list[str]):
 
 
 def parse_and_condition(tokens: list[str]):
-    leftNotCondition, num_consumed = parse_not_condition(tokens)
-    if not leftNotCondition:
+    result = parse_not_condition(tokens)
+    if not result:
         return None
+    leftNotCondition, num_consumed = result
     total_num_consumed = num_consumed
     if num_consumed == len(tokens):
         return leftNotCondition, total_num_consumed
@@ -669,9 +691,10 @@ def parse_and_condition(tokens: list[str]):
         if len(tokens) == 1:
             print(f"Syntax error: and operator must be followed by comparison or nested condition")
             return None
-        rightNotCondition, num_consumed = parse_not_condition(tokens[1:])
-        if not rightNotCondition:
+        result = parse_not_condition(tokens[1:])
+        if not result:
             return None
+        rightNotCondition, num_consumed = result
         total_num_consumed += num_consumed + 1
         condition = ("AND", leftNotCondition, rightNotCondition)
         if num_consumed == len(tokens[1:]):
@@ -692,10 +715,11 @@ def parse_not_condition(tokens: list[str]):
             print("Syntax error: not operator must be followed by a condition")
             return None
 
-        condition, num_consumed = parse_not_condition(tokens[1:])
+        result = parse_not_condition(tokens[1:])
 
-        if not condition:
+        if not result:
             return None
+        condition, num_consumed = result
 
         return ("NOT", condition), num_consumed + 1
 
@@ -708,9 +732,10 @@ def parse_condition_base(tokens: list[str]):
         return None
 
     if tokens[0] == "LEFTP:(":
-        condition, num_consumed = parse_condition(tokens[1:])
-        if not condition:
+        result = parse_condition(tokens[1:])
+        if not result:
             return None
+        condition, num_consumed = result
         if num_consumed == len(tokens[1:]) or tokens[num_consumed + 1] != "RIGHTP:)":
             print(f"Syntax error: Never closed ( for nested condition {tokens[1:]}")
             return None
@@ -752,6 +777,72 @@ def parse_comparison_operator(token: str):
         return compOp[:compOp.index(":")]
     print(f"Comparison operator must be of type EQ, NE, GT, GTE, LT, LTE: {compOp}")
     return None
+
+def evaluate_expr(parse_tree):
+    if not (parse_tree):
+        print("Empty tree")
+        return None
+    match parse_tree[0]:
+        case "RELATION":
+            name = parse_tree[1]
+            if name not in relations:
+                print(f"Name Error: Relation {name} does not exist")
+                return None
+            return relations[name]
+
+        case "SELECT":
+            expr = evaluate_expr(parse_tree[1])
+            if expr is None:
+                return None
+            return select(expr, parse_tree[2])
+
+        case "PROJECT":
+            expr = evaluate_expr(parse_tree[1])
+            if expr is None:
+                return None
+            return project(expr, parse_tree[2][1])
+
+        case "RENAME":
+            expr = evaluate_expr(parse_tree[1])
+            if expr is None:
+                return None
+            return rename(expr, parse_tree[2][1])
+
+        case "UNION":
+            expr1 = evaluate_expr(parse_tree[1])
+            expr2 = evaluate_expr(parse_tree[2])
+            if expr1 is None or expr2 is None:
+                return None
+            return union(expr1, expr2)
+
+        case "INTERSECT":
+            expr1 = evaluate_expr(parse_tree[1])
+            expr2 = evaluate_expr(parse_tree[2])
+            if expr1 is None or expr2 is None:
+                return None
+            return intersect(expr1, expr2)
+
+        case "MINUS":
+            expr1 = evaluate_expr(parse_tree[1])
+            expr2 = evaluate_expr(parse_tree[2])
+            if expr1 is None or expr2 is None:
+                return None
+            return minus(expr1, expr2)
+
+        case "TIMES":
+            expr1 = evaluate_expr(parse_tree[1])
+            expr2 = evaluate_expr(parse_tree[2])
+            if expr1 is None or expr2 is None:
+                return None
+            return times(expr1, expr2)
+
+        case "JOIN":
+            expr1 = evaluate_expr(parse_tree[1])
+            expr2 = evaluate_expr(parse_tree[2])
+            if expr1 is None or expr2 is None:
+                return None
+            return join(expr1, expr2, parse_tree[3])
+
 
 def main():
 
