@@ -195,7 +195,7 @@ def rename(R1: list[tuple[str]], name: str):
 def print_table(R: list[tuple[str]]):
     print(R[0] + "\n")
     widths = [
-        max(len(str(row[i])) for row in R)
+        max(len(str(row[i])) for row in R[1:])
         for i in range(len(R[1]))
     ]
 
@@ -314,23 +314,28 @@ def tokenize(query: str):
                 position += 1
                 continue
     
-        #Check if boolean operator
+        # Check if boolean operator
         if c in ["a", "o", "n"]:
             if c == "a":
-                if position + 3 < len(query):
-                    if query[position:position + 4] == "and ":
+                if query[position:position + 3] == "and":
+                    next_pos = position + 3
+                    if next_pos == len(query) or not (query[next_pos].isalnum() or query[next_pos] == "_"):
                         tokens.append("AND:and")
                         position += 3
                         continue
+
             if c == "o":
-                if position + 2 < len(query):
-                    if query[position:position + 3] == "or ":
+                if query[position:position + 2] == "or":
+                    next_pos = position + 2
+                    if next_pos == len(query) or not (query[next_pos].isalnum() or query[next_pos] == "_"):
                         tokens.append("OR:or")
                         position += 2
                         continue
+
             if c == "n":
-                if position + 3 < len(query):
-                    if query[position:position + 4] == "not ":
+                if query[position:position + 3] == "not":
+                    next_pos = position + 3
+                    if next_pos == len(query) or not (query[next_pos].isalnum() or query[next_pos] == "_"):
                         tokens.append("NOT:not")
                         position += 3
                         continue
@@ -369,32 +374,31 @@ def tokenize(query: str):
                         position += 4
                         continue
 
-        #Check if binary op except join
+        # Check if binary op except join
         if c in ["t", "u", "i", "m"]:
-            if c == "t":
-                if position + 5 < len(query):
-                    if query[position - 1:position + 6] == " times ":
-                        tokens.append("TIMES:times")
-                        position += 5
-                        continue
+            if c == "t": #Needs to recognize trailing binary op as binary op despite no following space to give correct failure error
+                if query[position - 1:position + 6] == " times " or (query[position - 1:position + 5] == " times" and len(query) == position + 5):
+                    tokens.append("TIMES:times")
+                    position += 5
+                    continue
+
             if c == "u":
-                if position + 5 < len(query):
-                    if query[position - 1:position + 6] == " union ":
-                        tokens.append("UNION:union")
-                        position += 5
-                        continue
+                if query[position - 1:position + 6] == " union " or (query[position - 1:position + 5] == " union" and len(query) == position + 5):
+                    tokens.append("UNION:union")
+                    position += 5
+                    continue
+
             if c == "i":
-                if position + 9 < len(query):
-                    if query[position - 1:position + 10] == " intersect ":
-                        tokens.append("INTERSECT:intersect")
-                        position += 9
-                        continue
+                if query[position - 1:position + 10] == " intersect " or (query[position - 1:position + 9] == " intersect" and len(query) == position + 9):
+                    tokens.append("INTERSECT:intersect")
+                    position += 9
+                    continue
+
             if c == "m":
-                if position + 5 < len(query):
-                    if query[position - 1:position + 6] == " minus ":
-                        tokens.append("MINUS:minus")
-                        position += 5
-                        continue
+                if query[position - 1:position + 6] == " minus " or (query[position - 1:position + 5] == " minus" and len(query) == position + 5):
+                    tokens.append("MINUS:minus")
+                    position += 5
+                    continue
 
 
 
@@ -462,6 +466,7 @@ def tokenize_relation(query: str, position: int):
     return relation, position
 
 def parse_expr(tokens: list[str]):
+    print(tokens)
     result = parse_join_expr(tokens)
     if not result:
         return None
@@ -846,101 +851,37 @@ def evaluate_expr(parse_tree):
 
 def main():
 
+    if "--tree" in sys.argv:
+        query = sys.argv[-1]
+        tokens = tokenize(query)
+        if tokens is None:
+            return
+        parse_tree = parse_expr(tokens)
+        if parse_tree is None:
+            return
+        print_tree(parse_tree[0])
+        return
 
-    # rel1 = """Employees (EID, Name, Age, DID) = {
-    # E1, John, 32, D1
-    # E2, Alice, 28, D2
-    # E3, Bob, 29, D3
-    # E4, Janice, 30, D2
-    # }"""
-    # rel2 = """Departments (DID, Name, Budget) = {
-    # D1, Finance, 20000
-    # D2, Sales, 30000
-    # D3, HR, 25000
-    # D4, IT, 15000
-    # }"""
-    # rel3 = """Employees2 (EID, Name, Age, DID) = {
-    # E2, Alice, 28, D2
-    # E4, Janice, 30, D2
-    # E5, John, 32, D1
-    # E6, David, 47, D4
-    # }"""
-    # create_relation(rel1)
-    # create_relation(rel2)
-    # create_relation(rel3)
-    # print_table(relations["Employees"])
-    # print_table(relations["Departments"])
-    # print_table(relations["Employees2"])
-    # print_table(project(relations["Departments"], ["DID"]))
-    # print_table(project(relations["Employees"], ["EID", "Age"]))
-    # print_table(times(relations["Employees"], relations["Departments"]))
-    # print_table(union(relations["Employees"], relations["Employees2"]))
-    # print_table(intersect(relations["Employees"], relations["Employees2"]))
-    # print_table(minus(relations["Employees"], relations["Employees2"]))
-    # print_table(minus(relations["Employees2"], relations["Employees"]))
-    rel1 = """A (X) = {
-    1
-    2
-    3
-    }"""
+    while(True):
+        query = input(">")
+        if query in ["quit", "exit"]:
+            return
+        tokens = tokenize(query)
+        if tokens is None:
+            continue
+        if len(tokens) >= 2 and tokens[0].startswith("RELATION:") and tokens[1] == "LEFTP:(":
+            while "}" not in query:
+                query += "\n" + input()
+            create_relation(query)
+        else:
+            parse_tree = parse_expr(tokens)
+            if parse_tree is None:
+                continue
+            evaluation = evaluate_expr(parse_tree[0])
+            if evaluation is None:
+                continue
+            print_table(evaluation)
 
-    rel2 = """B (X) = {
-    2
-    3
-    4
-    }"""
-
-    rel3 = """C (X) = {
-    3
-    4
-    5
-    }"""
-
-    rel4 = """D (Y) = {
-    10
-    20
-    }"""
-
-    create_relation(rel1)
-    create_relation(rel2)
-    create_relation(rel3)
-    create_relation(rel4)
-
-    print("Testing: A")
-    query, num = parse_expr(tokenize("A"))
-    print_table(query)
-
-    print("Testing: A union B")
-    query, num = parse_expr(tokenize("A union B"))
-    print_table(query)
-
-    print("Testing: A intersect B")
-    query, num = parse_expr(tokenize("A intersect B"))
-    print_table(query)
-
-    print("Testing: A minus B")
-    query, num = parse_expr(tokenize("A minus B"))
-    print_table(query)
-
-    print("Testing: A times D")
-    query, num = parse_expr(tokenize("A times D"))
-    print_table(query)
-
-    print("Testing: A union B minus C")
-    query, num = parse_expr(tokenize("A union B minus C"))
-    print_table(query)
-
-    print("Testing: A minus B minus C")
-    query, num = parse_expr(tokenize("A minus B minus C"))
-    print_table(query)
-
-    print("Testing: A union B intersect C")
-    query, num = parse_expr(tokenize("A union B intersect C"))
-    print_table(query)
-
-    print("Testing: A times D union B")
-    query, num = parse_expr(tokenize("A times D union B"))
-    print_table(query)
 
 
 if __name__ == "__main__":
