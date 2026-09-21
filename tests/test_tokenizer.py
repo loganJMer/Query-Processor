@@ -327,9 +327,9 @@ reqTests = [
             "RELATION:Emp",
             "JOIN:join",
             "LEFTS:[",
-            "RELATION_COLUMN:Emp.DID",
+            "RELATION:Emp.DID",
             "EQ:=",
-            "RELATION_COLUMN:Dept.DID",
+            "RELATION:Dept.DID",
             "RIGHTS:]",
             "RELATION:Dept"
         ]
@@ -348,9 +348,9 @@ reqTests = [
             "RIGHTP:)",
             "JOIN:join",
             "LEFTS:[",
-            "RELATION_COLUMN:Emp.MgrID",
+            "RELATION:Emp.MgrID",
             "EQ:=",
-            "RELATION_COLUMN:E2.EID",
+            "RELATION:E2.EID",
             "RIGHTS:]",
             "RELATION:Emp"
         ]
