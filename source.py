@@ -201,8 +201,7 @@ def minus(R1: list[tuple[str]], R2: list[tuple[str]]):
 def rename(R1: list[tuple[str]], name: str):
     new_relation = R1.copy()
     new_relation[0] = name
-    relations[name] = new_relation
-    return relations[name]
+    return new_relation
 
 def print_table(R: list[tuple[str]]):
     print(R[0] + "\n")
