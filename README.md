@@ -12,6 +12,8 @@ RELATION_NAME (col1, col2, col3) = {
     D1, D2, D3
 }
 
+Does not accpet one line input for relation definition, splits rows via \n
+
 tree command: python source.py --tree "**QUERY**"
 
 The program will print the parse tree for the given query.
