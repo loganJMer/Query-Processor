@@ -24,6 +24,8 @@ Program will create 2 relations with num_rows rows, with a match rate of match r
 
 Note: num_rows must be a positive non-zero integer, match_rate must be a float 0 <= match_rate <= 1
 
+select project data gen command: python source.py --sel-proj numrows
+
 HOW TO RUN TESTS
 
 Run following command from root directory containing source.py and tests/*.py

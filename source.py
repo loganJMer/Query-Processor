@@ -958,11 +958,13 @@ def main():
         relations["R"] = R
 
         sel_start = time.perf_counter()
-        result = select(R, ("COMPARISON", ("EQ", ("ATTRIBUTE", "R.a"), ("NUM", "7"))))
-        sel_end = time.perf_counter
-        result = project(R, ["a"])
-        proj_end = time.perf_counter
-        print(f"Sel wall time: {wall_time:.6f} seconds")
+        select(R, ("COMPARISON", ("EQ", ("ATTRIBUTE", "a"), ("NUM", "7"))))
+        sel_end = time.perf_counter()
+        project(R, ["b"])
+        proj_end = time.perf_counter()
+        print(f"Sel wall time: {sel_end-sel_start:.6f} seconds")
+        print(f"Proj wall time: {proj_end-sel_end:.6f} seconds")
+        return
 
 
     while(True):
