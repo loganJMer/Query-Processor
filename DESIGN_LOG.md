@@ -30,5 +30,5 @@ Made some small adjustments. Added float functionality to operands. Added some k
 Session 8: 11:30pm - 2am September 22
 Fixed change from INT to NUM. Added data generator and began running tests for the experiment in 8.3, as well as answered questions that I could. Tests will take a while on my computer unfortunately
 
-Session 9: 12pm - 1pm, September 23
-Tests are finally done. Also made and ran select/project tests. Answered remaining questions in report
+Session 9: 12pm - 2pm, September 23
+Tests are finally done. Also made and ran select/project tests. Answered remaining questions in report. Did a little bit of final troubleshooting and testing, then record video demonstration

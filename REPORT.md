@@ -11,7 +11,7 @@ n       m       comparisons         wall time (s)       output_tuples
 4000    4000    32,000,000          37                  2000
 8000    8000    128,000,000         156                 4000
 16000   16000   512,000,000         632                 8000
-32000   32000   2,048,000,000       2600                16000
+32000   32000   2,048,000,000       2597                16000
 64000   64000   8,192,000,000       13725               32000
 
 Questions:
@@ -43,10 +43,16 @@ The relation between n and t in roughly linear on log-log axes for both select a
 
 Q4. Using your measurements, predict how long the join would take with one million tuples on each side. Show the arithmetic. Do not run it.
 
-A4. n = 1,000,000
-    m = 1,000,000
-    comparisons = 2nm = 2 * 1,000,000 * 1,000,000 = 2,000,000,000,000
-    t ≈ comparisons / 1,000,000 * 
+A4. 
+
+By averaging time / comparisons / 1,000,000 for n 2,000 -> 32,000, we can find that the ratio of time to million comparisons is roughly 1.2. Ignoring 1000 as size is too small to be helpful and 64000 as hardware limitations shouldn't affect the general formula
+
+n = 1,000,000
+m = 1,000,000
+comparisons = 2nm = 2 * 1,000,000 * 1,000,000 = 2,000,000,000,000
+t ≈ comparisons / 1,000,000 * 1.2 ≈ 2,000,000,000,000 / 1,000,000 * 1.2 ≈ 2,400,000 seconds
+
+So, an n = m = 1,000,000 tuple join would take roughly 2,400,000 seconds or 27.7777 days before hardware constraints which would almost definitely affect the time further
 
 Q5. Does changing the match rate change the comparison count? Does it change the wall time? Explain why those two answers differ.
 

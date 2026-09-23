@@ -34,11 +34,22 @@ def evaluate_condition(condition, col_names: tuple[str], row: tuple[str]):
         return None
     match condition[0]:
         case "OR":
-            return evaluate_condition(condition[1], col_names, row) or evaluate_condition(condition[2], col_names, row)
+            result1 = evaluate_condition(condition[1], col_names, row)
+            result2 = evaluate_condition(condition[2], col_names, row)
+            if result1 is None or result2 is None:
+                return None
+            return result1 or result2
         case "AND":
-            return evaluate_condition(condition[1], col_names, row) and evaluate_condition(condition[2], col_names, row)
+            result1 = evaluate_condition(condition[1], col_names, row)
+            result2 = evaluate_condition(condition[2], col_names, row)
+            if result1 is None or result2 is None:
+                return None
+            return result1 and result2
         case "NOT":
-            return not evaluate_condition(condition[1], col_names, row)
+            result = evaluate_condition(condition[1], col_names, row)
+            if result is None:
+                return None
+            return not result
         case "COMPARISON":
             comparison = condition[1]
             operator = comparison[0]
@@ -48,7 +59,7 @@ def evaluate_condition(condition, col_names: tuple[str], row: tuple[str]):
             for val in [val1, val2]:
                 if val[0] == "ATTRIBUTE":
                     if val[1] not in col_names:
-                        print(f"Syntax error: Attribute {val[1]} not present in relation attributes {col_names}")
+                        print(f"Name error: Attribute {val[1]} not present in relation attributes {col_names}")
                         return None
                     index = col_names.index(val[1])
                     row_value = row[index]
@@ -281,6 +292,9 @@ def tokenize(query: str):
     while(position < len(query)):
         c = query[position]
         c2 = query[position + 1] if position + 1 < len(query) else None
+
+        if position == 0 and c == "/" and c2 == "/": #Comment line
+            return None
 
         #Skip whitespace
         if c == ' ':
@@ -939,7 +953,7 @@ def main():
         print(f"Output tuples: {len(result) - 2}")
         return
 
-    if "--sel-proj":
+    if "--sel-proj" in sys.argv:
         if len(sys.argv) != 3:
             print("Usage: python source.py --sel-proj num_rows")
             return
