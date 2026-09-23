@@ -18,6 +18,12 @@ tree command: python source.py --tree "**QUERY**"
 
 The program will print the parse tree for the given query.
 
+data generator command: python source.py --data-gen num_rows match_rate
+
+Program will create 2 relations with num_rows rows, with a match rate of match rate. Join them, counting comparisons, time, and rows in output
+
+Note: num_rows must be a positive non-zero integer, match_rate must be a float 0 <= match_rate <= 1
+
 HOW TO RUN TESTS
 
 Run following command from root directory containing source.py and tests/*.py

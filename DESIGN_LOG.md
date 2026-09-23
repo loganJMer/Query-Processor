@@ -26,3 +26,6 @@ Still couldn't sleep, so I added the main loop functionality. Now function can b
 
 Session 7: 2:30pm - 3pm, September 21
 Made some small adjustments. Added float functionality to operands. Added some known restrictions and answers/clarification to readme. Also added more restrictions for relation creations like no duplicate col names, ignorning duplicate rows, and checking if relation with that name already exists.
+
+Session 8: 11:30pm - XXX September 22
+Fixed change from INT to NUM. Added data generator and ran tests for the experiment in 8.3, as wel as answered questions that I could. Tests will take a while on my computer unfortunately

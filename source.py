@@ -1,6 +1,8 @@
 import sys
+import time
 
 relations = {}
+counter = 0
 
 def create_relation(input: str):
     relation_name = input[:input.find(" ")]
@@ -95,8 +97,10 @@ def is_number(n):
     return False
 
 def select(R: list[tuple[str]], condition: list[str]):
+    global counter
     selection = [R[0], R[1]]
     for row in R[2:]:
+        counter += 1
         evaluation = evaluate_condition(condition, R[1], row)
         if evaluation is None:
             return None
@@ -108,14 +112,14 @@ def project(R: list[tuple[str]], cols: list[str]):
     indices = []
     projection = [R[0]]
     for col in cols:
+        if col not in R[1]:
+            print(f"Name error: Column {col} does not exist in relation {R[0]}")
+            return None
         index = R[1].index(col)
         if index in indices:
             print(f"Syntax error: No duplicates attributes in project. Error in project{cols}({R[0]})")
             return None
         indices.append(index)
-        if indices[-1] == -1:
-            print(f"Name error: Column {col} does not exist in relation {R}")
-            return None
     for row in R[1:]:
         new_row = tuple([row[i] for i in indices])
         if new_row not in projection:
@@ -126,8 +130,12 @@ def project(R: list[tuple[str]], cols: list[str]):
 
 #Cartesian product
 def times(R1: list[tuple[str]], R2: list[tuple[str]]):
+    global counter
     product = [R1[0]]
     titles = []
+    if R1[0] == R2[0]:
+        print(f"Cannot self times / self join without renaming table {R1[0]}")
+        return
     for col in R1[1]:
         titles.append(f"{R1[0]}.{col}")
     for col in R2[1]:
@@ -136,12 +144,13 @@ def times(R1: list[tuple[str]], R2: list[tuple[str]]):
     rows1, rows2 = R1[2:], R2[2:]
     for row1 in rows1:
         for row2 in rows2:
+            counter += 1
             product.append(row1+row2)
     return product
 
 
 #Theta inner join
-def join(R1: list[tuple[str]], R2: list[tuple[str]], condition: str):
+def join(R1: list[tuple[str]], R2: list[tuple[str]], condition: list[str]):
     return select(times(R1, R2), condition)
 
 def union(R1: list[tuple[str]], R2: list[tuple[str]]):
@@ -765,7 +774,7 @@ def parse_condition_base(tokens: list[str]):
     return parse_comparison(tokens)
 
 def parse_comparison(tokens: list[str]):
-    if len(tokens) != 3:
+    if len(tokens) < 3:
         print(f"Syntax error: comparison must consist of three elements: {tokens}")
         return None
     leftOp = parse_operand(tokens[0])
@@ -868,6 +877,9 @@ def evaluate_expr(parse_tree):
 def main():
 
     if "--tree" in sys.argv:
+        if len(sys.argv) != 3:
+            print("Usage: python source.py --data-gen num_rows match_rate")
+            return
         query = sys.argv[-1]
         tokens = tokenize(query)
         if tokens is None:
@@ -877,6 +889,81 @@ def main():
             return
         print_tree(parse_tree[0])
         return
+
+    if "--data-gen" in sys.argv:
+        if len(sys.argv) != 4:
+            print("Usage: python source.py --data-gen num_rows match_rate")
+            return
+        num_rows = sys.argv[-2]
+        match_rate = sys.argv[-1]
+        try:
+            num_rows = int(num_rows)
+        except:
+            print("num_rows arg must be an integer")
+            return
+        if num_rows < 1:
+            print("num_rows args must be positive non-zero integer")
+            return
+        try:
+            match_rate = float(match_rate)
+        except:
+            print("match_rate arg must be an float")
+            return
+        if not (0 <= match_rate <= 1):
+            print("match_rate args must be 0 <= match_rate <= 1")
+            return
+        match_num = round(num_rows * match_rate)
+        R = ["R", ("a", "b")]
+        S = ["S", ("b", "c")]
+
+        #Just thought it was cleaner to start at 1
+        for i in range(num_rows):
+            R.append(("0", str(i + 1)))
+
+        for i in range(match_num):
+            S.append((str(i + 1), "1"))
+
+        for i in range(num_rows - match_num):
+            S.append((str(num_rows + i + 1), "1"))
+
+        relations["R"] = R
+        relations["S"] = S
+        start = time.perf_counter()
+        result = join(R, S, ("COMPARISON", ("EQ", ("ATTRIBUTE", "R.b"), ("ATTRIBUTE", "S.b"))))
+        end = time.perf_counter()
+
+        wall_time = end - start
+
+        print(f"Comparison counter: {counter}")
+        print(f"Wall time: {wall_time:.6f} seconds")
+        print(f"Output tuples: {len(result) - 2}")
+        return
+
+    if "--sel-proj":
+        if len(sys.argv) != 3:
+            print("Usage: python source.py --sel-proj num_rows")
+            return
+        num_rows = sys.argv[-1]
+        try:
+            num_rows = int(num_rows)
+        except:
+            print("num_rows arg must be an integer")
+            return
+        if num_rows < 1:
+            print("num_rows args must be positive non-zero integer")
+            return
+        R = ["R", ("a", "b")]
+        for i in range(num_rows):
+            R.append(("0", str(i)))
+        relations["R"] = R
+
+        sel_start = time.perf_counter()
+        result = select(R, ("COMPARISON", ("EQ", ("ATTRIBUTE", "R.a"), ("NUM", "7"))))
+        sel_end = time.perf_counter
+        result = project(R, ["a"])
+        proj_end = time.perf_counter
+        print(f"Sel wall time: {wall_time:.6f} seconds")
+
 
     while(True):
         query = input(">")

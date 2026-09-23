@@ -52,7 +52,7 @@ reqTests = [
                             (
                                 "EQ",
                                 ("ATTRIBUTE", "a"),
-                                ("INT", 1)
+                                ("NUM", 1)
                             )
                         ),
                         (
@@ -60,7 +60,7 @@ reqTests = [
                             (
                                 "EQ",
                                 ("ATTRIBUTE", "b"),
-                                ("INT", 2)
+                                ("NUM", 2)
                             )
                         )
                     )
@@ -70,7 +70,7 @@ reqTests = [
                     (
                         "GT",
                         ("ATTRIBUTE", "c"),
-                        ("INT", 3)
+                        ("NUM", 3)
                     )
                 )
             )
@@ -92,7 +92,7 @@ reqTests = [
                         (
                             "EQ",
                             ("ATTRIBUTE", "a"),
-                            ("INT", 1)
+                            ("NUM", 1)
                         )
                     ),
                     (
@@ -100,7 +100,7 @@ reqTests = [
                         (
                             "EQ",
                             ("ATTRIBUTE", "b"),
-                            ("INT", 2)
+                            ("NUM", 2)
                         )
                     )
                 ),
@@ -109,7 +109,7 @@ reqTests = [
                     (
                         "EQ",
                         ("ATTRIBUTE", "c"),
-                        ("INT", 3)
+                        ("NUM", 3)
                     )
                 )
             )
@@ -140,7 +140,7 @@ reqTests = [
                     (
                         "GT",
                         ("ATTRIBUTE", "Age"),
-                        ("INT", 30)
+                        ("NUM", 30)
                     )
                 )
             ),
@@ -250,7 +250,7 @@ otherTests = [
                 (
                     "EQ",
                     ("ATTRIBUTE", "X"),
-                    ("INT", 1)
+                    ("NUM", 1)
                 )
             )
         )
@@ -286,7 +286,7 @@ otherTests = [
                 (
                     "NEQ",
                     ("ATTRIBUTE", "X"),
-                    ("INT", 1)
+                    ("NUM", 1)
                 )
             )
         )
@@ -303,7 +303,7 @@ otherTests = [
                 (
                     "GTE",
                     ("ATTRIBUTE", "X"),
-                    ("INT", 1)
+                    ("NUM", 1)
                 )
             )
         )
@@ -320,7 +320,7 @@ otherTests = [
                 (
                     "LTE",
                     ("ATTRIBUTE", "X"),
-                    ("INT", 1)
+                    ("NUM", 1)
                 )
             )
         )
@@ -337,7 +337,7 @@ otherTests = [
                 (
                     "LT",
                     ("ATTRIBUTE", "X"),
-                    ("INT", 1)
+                    ("NUM", 1)
                 )
             )
         )
@@ -359,7 +359,7 @@ otherTests = [
                 (
                     "EQ",
                     ("ATTRIBUTE", "Age"),
-                    ("INT", 30)
+                    ("NUM", 30)
                 )
             )
         )
@@ -421,7 +421,7 @@ otherTests = [
                 (
                     "EQ",
                     ("ATTRIBUTE", "Age"),
-                    ("INT", -10)
+                    ("NUM", -10)
                 )
             )
         )
@@ -481,7 +481,7 @@ otherTests = [
                         (
                             "EQ",
                             ("ATTRIBUTE", "a"),
-                            ("INT", 1)
+                            ("NUM", 1)
                         )
                     ),
                     (
@@ -489,7 +489,7 @@ otherTests = [
                         (
                             "EQ",
                             ("ATTRIBUTE", "b"),
-                            ("INT", 2)
+                            ("NUM", 2)
                         )
                     )
                 ),
@@ -498,7 +498,7 @@ otherTests = [
                     (
                         "EQ",
                         ("ATTRIBUTE", "c"),
-                        ("INT", 3)
+                        ("NUM", 3)
                     )
                 )
             )
@@ -520,7 +520,7 @@ otherTests = [
                         (
                             "EQ",
                             ("ATTRIBUTE", "a"),
-                            ("INT", 1)
+                            ("NUM", 1)
                         )
                     ),
                     (
@@ -528,7 +528,7 @@ otherTests = [
                         (
                             "EQ",
                             ("ATTRIBUTE", "b"),
-                            ("INT", 2)
+                            ("NUM", 2)
                         )
                     )
                 ),
@@ -537,7 +537,7 @@ otherTests = [
                     (
                         "EQ",
                         ("ATTRIBUTE", "c"),
-                        ("INT", 3)
+                        ("NUM", 3)
                     )
                 )
             )
@@ -561,7 +561,7 @@ otherTests = [
                             (
                                 "EQ",
                                 ("ATTRIBUTE", "a"),
-                                ("INT", 1)
+                                ("NUM", 1)
                             )
                         )
                     )
@@ -610,7 +610,7 @@ otherTests = [
                 (
                     "GT",
                     ("ATTRIBUTE", "Age"),
-                    ("INT", 30)
+                    ("NUM", 30)
                 )
             )
         )
@@ -629,7 +629,7 @@ otherTests = [
                     (
                         "EQ",
                         ("ATTRIBUTE", "a"),
-                        ("INT", 1)
+                        ("NUM", 1)
                     )
                 )
             ),
