@@ -5,14 +5,16 @@ Version : 3.13.1
 Pre-guess: comparisons = 2(n*m)
 
 Note: All experiments performed with match_rate = 0.5
-n       m       comparisons         wall time (s)       output_tuples
-1000    1000    2,000,000           2                   500
-2000    2000    8,000,000           9                   1000
-4000    4000    32,000,000          37                  2000
-8000    8000    128,000,000         156                 4000
-16000   16000   512,000,000         632                 8000
-32000   32000   2,048,000,000       2597                16000
-64000   64000   8,192,000,000       13725               32000
+
+| n | m | comparisons | wall time (s) | output_tuples |
+|---:|---:|---:|---:|---:|
+| 1000 | 1000 | 2,000,000 | 2 | 500 |
+| 2000 | 2000 | 8,000,000 | 9 | 1,000 |
+| 4000 | 4000 | 32,000,000 | 37 | 2,000 |
+| 8000 | 8000 | 128,000,000 | 156 | 4,000 |
+| 16000 | 16000 | 512,000,000 | 632 | 8,000 |
+| 32000 | 32000 | 2,048,000,000 | 2,597 | 16,000 |
+| 64000 | 64000 | 8,192,000,000 | 13,725 | 32,000 |
 
 Questions:
 Q1. What is the exact relationship between n, m and your comparison count? Does the measured count match the formula exactly? If it does not, explain the discrepancy.
@@ -27,16 +29,17 @@ The relationship is between n and t is roughly linear on log-log axes with a slo
 
 Q3. Measure select and project at the same sizes. How do those curves differ from the join, and why? 
 
-A3. ![Graph1](./tests/graph1.png)
+A3. ![Graph2](./tests/graph2.png)
 
-n       select wall time (s)    project wall time (s)
-1000    0.002                   0.009
-2000    0.004                   0.030     
-4000    0.007                   0.178     
-8000    0.015                   0.572         
-16000   0.030                   2.165     
-32000   0.060                   8.747     
-64000   0.120                   36.140    
+| n | select wall time (s) | project wall time (s) |
+|---:|---:|---:|
+| 1000 | 0.002 | 0.009 |
+| 2000 | 0.004 | 0.030 |
+| 4000 | 0.007 | 0.178 |
+| 8000 | 0.015 | 0.572 |
+| 16000 | 0.030 | 2.165 |
+| 32000 | 0.060 | 8.747 |
+| 64000 | 0.120 | 36.140 |
 
 The relation between n and t in roughly linear on log-log axes for both select and project, but they have different slopes. The slope of select point has a slope of roughly one, implying an actual linear relationship. This makes sense, as we can see the select time roughly double for each times n doubles, which is in line with the idea the select performs 1 comparison per n. Project has a slope of roughly 2, implying a quadratic relationship. This makes sense, as the project operation has 2 steps, one of which is O(n^2). First, it goes through each tuple and creates a new one with only the matching columns which is O(n), however it then has to go through and remove duplicates, checking all other new tuples for each new tuple in order to ensure there are no duplicates, which is O(n^2), cause this expected quadratic relationship
 
@@ -48,8 +51,11 @@ A4.
 By averaging time / comparisons / 1,000,000 for n 2,000 -> 32,000, we can find that the ratio of time to million comparisons is roughly 1.2. Ignoring 1000 as size is too small to be helpful and 64000 as hardware limitations shouldn't affect the general formula
 
 n = 1,000,000
+
 m = 1,000,000
+
 comparisons = 2nm = 2 * 1,000,000 * 1,000,000 = 2,000,000,000,000
+
 t ≈ comparisons / 1,000,000 * 1.2 ≈ 2,000,000,000,000 / 1,000,000 * 1.2 ≈ 2,400,000 seconds
 
 So, an n = m = 1,000,000 tuple join would take roughly 2,400,000 seconds or 27.7777 days before hardware constraints which would almost definitely affect the time further
